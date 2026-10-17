@@ -1,0 +1,192 @@
+openapi: 3.1.0
+info:
+  title: Viante — API interna proposta
+  version: 2.0.0-spec
+  description: >
+    Contratos para implementação em /api/v1. NÃO são endpoints em operação.
+    tenantId é obtido de sessão + workspace e validado no servidor, nunca confiado só no body.
+servers:
+  - url: https://example.invalid/api/v1
+security:
+  - sessionAuth: []
+tags:
+  - name: Identity
+  - name: Inbox
+  - name: Vi
+  - name: Campaigns
+  - name: Integrations
+paths:
+  /me/workspaces:
+    get:
+      tags: [Identity]
+      summary: Lista empresas vinculadas ao usuário e escopos autorizados
+      responses:
+        '200': {description: Workspaces do usuário}
+        '401': {description: Sessão ausente}
+  /inbox/tickets:
+    get:
+      tags: [Inbox]
+      summary: Casos visíveis por grants (filtro servidor)
+      parameters:
+        - {name: cursor, in: query, schema: {type: string}}
+        - {name: status, in: query, schema: {type: string}}
+        - {name: unitId, in: query, schema: {type: string, format: uuid}}
+        - {name: departmentId, in: query, schema: {type: string, format: uuid}}
+      responses:
+        '200': {description: Tickets filtrados e paginados}
+        '403': {description: Escopo não autorizado}
+  /inbox/tickets/{ticketId}/claim:
+    post:
+      tags: [Inbox]
+      summary: Assume atomicamente um atendimento
+      parameters: [{name: ticketId, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: {type: integer, minimum: 1}
+      responses:
+        '200': {description: Ticket assumido e versão incrementada}
+        '403': {description: Sem permissão}
+        '409': {description: Ticket já assumido ou versão alterada}
+  /inbox/tickets/{ticketId}/transfers:
+    post:
+      tags: [Inbox]
+      summary: Solicita transferência para destino permitido
+      parameters: [{name: ticketId, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: {type: integer, minimum: 1}
+                toUnitId: {type: [string, 'null'], format: uuid}
+                toDepartmentId: {type: [string, 'null'], format: uuid}
+                toQueueId: {type: [string, 'null'], format: uuid}
+                toUserId: {type: [string, 'null'], format: uuid}
+                note: {type: string, maxLength: 1000}
+      responses:
+        '202': {description: Transferência pendente ou concluída conforme política}
+        '403': {description: Destino sem permissão}
+        '409': {description: Conflito / transferência já pendente}
+  /inbox/transfers/{transferId}/accept:
+    post:
+      tags: [Inbox]
+      summary: Aceita transferência validando destino e versão
+      parameters: [{name: transferId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200': {description: Transferência aplicada atomicamente}
+        '403': {description: Não autorizado}
+        '409': {description: Transferência não pendente}
+  /inbox/tickets/{ticketId}/messages:
+    post:
+      tags: [Inbox]
+      summary: Enfileira envio autorizado (não promete entrega)
+      parameters: [{name: ticketId, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idempotencyKey,body]
+              properties:
+                idempotencyKey: {type: string, minLength: 12}
+                body: {type: string, minLength: 1, maxLength: 4096}
+      responses:
+        '202': {description: Em fila; status assíncrono}
+        '403': {description: Sem autorização}
+        '422': {description: Canal/janela/template inválidos}
+  /contacts/lookup:
+    post:
+      tags: [Vi]
+      summary: Busca silenciosa com retorno limitado, sem revelar cadastro privado
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [phoneE164]
+              properties:
+                phoneE164: {type: string, pattern: '^\\+[1-9][0-9]{6,14}$'}
+      responses:
+        '200': {description: Match sinalizado conforme autorização; não prova identidade}
+        '403': {description: Sem autorização}
+  /automation/flows/{flowId}/simulate:
+    post:
+      tags: [Vi]
+      summary: Simula fluxo em ambiente isolado sem disparar mensagens externas
+      parameters: [{name: flowId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200': {description: Passos e etiquetas simulados}
+  /automation/flows/{flowId}/publish:
+    post:
+      tags: [Vi]
+      summary: Publica versão aprovada de um fluxo
+      parameters: [{name: flowId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '200': {description: Nova versão ativa}
+        '403': {description: Sem autorização}
+  /campaigns/estimate:
+    post:
+      tags: [Campaigns]
+      summary: Simula custos segundo tabela de fornecedor e público
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [audienceId,templateId]
+              properties:
+                audienceId: {type: string, format: uuid}
+                templateId: {type: string, format: uuid}
+      responses:
+        '200': {description: Faixa de custos, versão tarifária e premissas}
+  /campaigns/{campaignId}/approve:
+    post:
+      tags: [Campaigns]
+      summary: Aprova campanha com orçamento máximo e revisão de consentimento
+      parameters: [{name: campaignId, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses:
+        '202': {description: Aprovada para fila}
+        '403': {description: Aprovação não autorizada}
+        '422': {description: Template, consentimento ou custo inválido}
+  /integrations/meta/webhook:
+    get:
+      tags: [Integrations]
+      security: []
+      summary: Challenge de verificação do Webhook Meta (validação server-side)
+      responses:
+        '200': {description: Challenge validado}
+        '403': {description: Challenge inválido}
+    post:
+      tags: [Integrations]
+      security: []
+      summary: Recebe webhook com verificação de assinatura e deduplicação
+      responses:
+        '200': {description: Evento aceito e persistido}
+        '403': {description: Assinatura inválida}
+  /integrations/evo/webhook:
+    post:
+      tags: [Integrations]
+      security: []
+      summary: Recebe evento EVO opcional, autenticado segundo contrato do conector
+      responses:
+        '202': {description: Evento recebido para processamento}
+        '403': {description: Origem não autenticada}
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: auth-session
+      description: Esquema ilustrativo; implementação usa cookies de sessão seguros do Supabase Auth.

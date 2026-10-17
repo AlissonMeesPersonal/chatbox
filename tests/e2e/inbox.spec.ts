@@ -1,0 +1,48 @@
+import { test,expect } from '@playwright/test';
+test('login demo, resposta, nota, transferência e responsividade',async({page},testInfo)=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.goto('/login');await page.getByRole('link',{name:'Entrar na demonstração'}).click();
+ await page.getByRole('button',{name:'Abrir conversa de Clara Martins'}).click();
+ await page.getByRole('textbox',{name:'Escrever mensagem'}).fill('Mensagem fictícia de teste');
+ await page.getByRole('button',{name:'Enviar mensagem'}).click();
+ await expect(page.getByText('Mensagem fictícia de teste',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Nota interna',exact:true}).click();
+ await page.getByRole('textbox',{name:'Escrever nota interna'}).fill('Contexto interno de teste');
+ await page.getByRole('button',{name:'Salvar nota'}).click();
+ await expect(page.getByText('Contexto interno de teste',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Transferir',exact:true}).click();
+ await expect(page.getByRole('dialog')).toBeVisible();
+ await page.getByRole('button',{name:'Solicitar transferência'}).click();
+ await expect(page.getByText(/Transferência pendente para/)).toBeVisible();
+ await expect(page.getByRole('button',{name:'Concluir',exact:true})).toBeDisabled();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.screenshot({path:`test-results/${testInfo.project.name}-inbox.png`,fullPage:true});
+ expect(errors).toEqual([]);
+});
+test('detalhes abrem e fecham, rascunho não atravessa casos',async({page},testInfo)=>{
+ await page.goto('/app/inbox');await page.getByRole('button',{name:'Abrir conversa de Clara Martins'}).click();
+ await page.getByRole('textbox',{name:'Escrever mensagem'}).fill('Rascunho só Clara');
+ if(testInfo.project.name==='desktop') await page.getByRole('button',{name:'Fechar detalhes'}).click();
+ await page.getByRole('button',{name:'Abrir detalhes do contato'}).click();
+ await expect(page.getByRole('complementary',{name:'Detalhes do contato'})).toBeVisible();
+ await page.getByRole('button',{name:'Fechar detalhes'}).click();
+ if(testInfo.project.name==='mobile')await page.getByRole('button',{name:'Voltar às conversas'}).click();
+ await page.getByRole('button',{name:'Abrir conversa de Rafael Costa'}).click();
+ await page.getByRole('button',{name:'Assumir',exact:true}).click();
+ await expect(page.getByRole('textbox',{name:'Escrever mensagem'})).toHaveValue('');
+ await expect(page.getByText('Vi em pausa · atendimento humano')).toBeVisible();
+});
+test('estados de demo, busca e tema',async({page},testInfo)=>{
+ await page.goto('/app/inbox');await page.getByRole('textbox',{name:'Buscar conversas'}).fill('zzzzzz');
+ await expect(page.getByRole('heading',{name:'Nenhuma conversa encontrada'})).toBeVisible();
+ await page.getByRole('button',{name:'Limpar busca'}).click();
+ await page.getByRole('button',{name:'Alternar tema'}).click();
+ await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+ await page.reload();await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+ await page.getByRole('button',{name:'Cenários de demonstração'}).click();
+ await page.getByRole('combobox',{name:'Simular estado'}).selectOption('offline');
+ await page.getByRole('button',{name:'Abrir conversa de Clara Martins'}).click();
+ await expect(page.getByRole('textbox',{name:'Escrever mensagem'})).toBeDisabled();
+ await expect(page.getByRole('alert')).toContainText('offline');
+ await page.screenshot({path:`test-results/${testInfo.project.name}-light.png`,fullPage:true});
+});
