@@ -3,7 +3,7 @@
   "framework": "nextjs",
   "git": {
     "deploymentEnabled": {
-      "main": false,
+      "main": true,
       "feat/phase-0-visual": true
     }
   }
