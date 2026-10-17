@@ -1,1 +1,10 @@
-{"$schema":"https://openapi.vercel.sh/vercel.json","framework":"nextjs","git":{"deploymentEnabled":false}}
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "feat/phase-0-visual": true
+    }
+  }
+}
