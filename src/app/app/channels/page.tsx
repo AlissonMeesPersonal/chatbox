@@ -12,6 +12,7 @@ type Channel = {
   id: string; organization_id: string; unit_id: string;
   waba_id: string; phone_number_id: string; display_phone_number: string;
   verified_name: string | null; status: 'connected' | 'disabled';
+  vi_enabled: boolean; vi_token_ready: boolean;
 };
 type Props = { searchParams: Promise<{ org?: string; status?: string }> };
 const responses: Record<string, string> = {
@@ -23,6 +24,10 @@ const responses: Record<string, string> = {
   'already-connected': 'Não foi possível vincular: verifique suas permissões ou se o número já pertence a outra unidade.',
   'meta-subscribe-error': 'A Meta não aceitou a assinatura dos webhooks; confira o App Meta e as permissões. O canal foi desativado.',
   'meta-unavailable': 'Não foi possível consultar a Meta no momento. Tente novamente.',
+  'vi-on': 'Vi ativada! Mensagens novas recebidas neste número poderão receber respostas automáticas do menu de testes.',
+  'vi-off': 'Vi pausada para este número. Nenhuma nova resposta automática será enviada.',
+  'vi-error': 'Não foi possível alterar a automação. Confirme suas permissões e tente novamente.',
+  'vi-token-missing': 'Antes de ativar a Vi, conclua a autorização do número na Meta para salvar uma credencial de envio segura.',
 };
 
 export default async function ChannelsPage({ searchParams }: Props) {
@@ -36,7 +41,7 @@ export default async function ChannelsPage({ searchParams }: Props) {
   const [orgRes, unitRes, channelRes] = await Promise.all([
     tenantApi('viante_organizations?select=id,name&id=in.(' + ids.join(',') + ')', 'GET', undefined, access),
     tenantApi('viante_units?select=id,organization_id,name&organization_id=in.(' + ids.join(',') + ')&order=name.asc', 'GET', undefined, access),
-    tenantApi('viante_whatsapp_channels?select=id,organization_id,unit_id,waba_id,phone_number_id,display_phone_number,verified_name,status&organization_id=in.(' + ids.join(',') + ')&order=created_at.desc', 'GET', undefined, access),
+    tenantApi('viante_whatsapp_channels?select=id,organization_id,unit_id,waba_id,phone_number_id,display_phone_number,verified_name,status,vi_enabled,vi_token_ready&organization_id=in.(' + ids.join(',') + ')&order=created_at.desc', 'GET', undefined, access),
   ]);
   const organizations = orgRes.ok && Array.isArray(orgRes.data) ? orgRes.data as Organization[] : [];
   const allUnits = unitRes.ok && Array.isArray(unitRes.data) ? unitRes.data as Unit[] : [];
@@ -119,6 +124,28 @@ export default async function ChannelsPage({ searchParams }: Props) {
               <strong>{c.display_phone_number}</strong>
               <p style={{ color: 'var(--muted)', marginTop: 6 }}>{units.find(u => u.id === c.unit_id)?.name || 'Unidade'}</p>
               <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 6 }}>{c.status === 'connected' ? 'Conectado à Meta — aguarda mensagens' : 'Desativado — revisar assinatura'}</p>
+              <p style={{ fontSize: 12, color: c.vi_enabled ? 'var(--accent)' : 'var(--muted)', marginTop: 9, fontWeight: 600 }}>
+                Vi · {c.vi_enabled ? 'Automação ativa' : 'Automação desligada'}
+              </p>
+              {canManage && mfa && c.status === 'connected' && <form method="post" action="/app/channels/vi-toggle"
+                style={{ display: 'grid', gap: 10, marginTop: 13 }}>
+                <input type="hidden" name="organization_id" value={company.id}/>
+                <input type="hidden" name="channel_id" value={c.id}/>
+                <input type="hidden" name="enabled" value={c.vi_enabled ? 'false' : 'true'}/>
+                <button className={c.vi_enabled ? 'button' : 'button primary'} type="submit"
+                  disabled={!c.vi_enabled && !(c.vi_token_ready ||
+                    (process.env.META_TEST_PHONE_NUMBER_ID === c.phone_number_id &&
+                     Boolean(process.env.META_TEST_WHATSAPP_TOKEN)))}>
+                  {c.vi_enabled ? 'Pausar respostas da Vi' : 'Ativar respostas da Vi'}
+                </button>
+                {!c.vi_enabled && !c.vi_token_ready && <p style={{ fontSize: 12, color: 'var(--muted)' }}>
+                  Primeiro autorize o WhatsApp na Meta. A Vi só poderá enviar mensagens com uma credencial válida.
+                </p>}
+                <p style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.5 }}>
+                  Ao ativar, você autoriza a Vi a responder mensagens novas com o menu 1/2/3.
+                  Solicitações de atendimento humano pausam a automação naquela conversa.
+                </p>
+              </form>}
             </div>
           )}</div>}
         <div style={{ display: 'grid', gap: 12, marginTop: 24 }}>
