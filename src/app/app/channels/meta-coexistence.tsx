@@ -2,7 +2,7 @@
 
 import Script from 'next/script';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ExternalLink, ShieldCheck, Smartphone, MessageSquare, History, LockKeyhole, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Smartphone, MessageSquare, History, LockKeyhole } from 'lucide-react';
 
 type Unit = { id: string; name: string };
 type FBResponse = { authResponse?: { code?: string } };
@@ -33,7 +33,6 @@ export function MetaCoexistence({
   const [busy, setBusy] = useState(false);
   const [unitId, setUnitId] = useState(units[0]?.id ?? '');
   const [consent, setConsent] = useState(false);
-  const [historyConsent, setHistoryConsent] = useState(false);
   const [status, setStatus] = useState('');
   const sessionRef = useRef<{ wabaId?: string; phoneId?: string }>({});
   const codeRef = useRef('');
@@ -72,7 +71,7 @@ export function MetaCoexistence({
       code,
       waba_id: sessionRef.current.wabaId ?? '',
       phone_number_id: sessionRef.current.phoneId ?? '',
-      requested_history_import: historyConsent,
+      requested_history_import: false,
     };
     try {
       const response = await fetch('/app/channels/coexistence/complete', {
@@ -87,7 +86,7 @@ export function MetaCoexistence({
         setStatus(typeof data.error === 'string' ? data.error : 'A Meta não concluiu a vinculação. Confira as configurações.');
         return;
       }
-      setStatus('Número verificado e vinculado à unidade! A conexão de recebimento está preparada. Respostas automáticas continuam desligadas até a configuração da Vi.');
+      setStatus('A Meta autorizou o número desta unidade. O recebimento será validado por webhook; importação e respostas automáticas ainda não estão ativadas.');
       window.location.assign('/app/channels?org=' + encodeURIComponent(organizationId) + '&status=connected');
     } catch {
       setStatus('Não foi possível concluir a autorização com a Meta. Tente novamente.');
@@ -164,10 +163,9 @@ export function MetaCoexistence({
             <input type="checkbox" checked={consent} disabled={busy} onChange={e=>setConsent(e.target.checked)} style={{ marginTop: 3 }}/>
             Autorizo vincular o WhatsApp Business desta unidade à plataforma Viante pela Meta. Entendo que a Meta realizará a verificação do número e poderá alterar recursos do aplicativo.
           </label>
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, lineHeight: 1.6 }}>
-            <input type="checkbox" checked={historyConsent} disabled={busy} onChange={e=>setHistoryConsent(e.target.checked)} style={{ marginTop: 3 }}/>
-            Desejo importar o histórico elegível. A confirmação efetiva de compartilhamento será feita dentro do fluxo da Meta; a importação não é imediata nem garantida.
-          </label>
+          <p style={{ fontSize: 12, padding: 13, border: '1px solid var(--border)', borderRadius: 8, color: 'var(--muted)', lineHeight: 1.65 }}>
+            <strong>Histórico de conversas:</strong> ao autorizar, a Meta pode oferecer compartilhamento dos últimos 180 dias. O Viante ainda precisa do processamento de eventos de histórico para exibir essa importação, portanto ela não será apresentada automaticamente nesta versão. Suas mensagens antigas não serão apagadas.
+          </p>
           <button className="button primary" type="button" onClick={connect}
             disabled={!sdkReady || !consent || !unitId || busy}>
             <LockKeyhole size={16}/> {busy ? 'Aguardando a Meta...' : 'Autorizar conexão com a Meta'}
