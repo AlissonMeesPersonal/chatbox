@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { accessToken, getIdentity, isPlatformAdmin, isSameOrigin, tokenAal } from '@/lib/auth';
 import { myMemberships, tenantApi } from '@/lib/tenant-api';
+import { saveChannelToken } from '@/lib/meta-token';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -94,8 +95,15 @@ export async function POST(request: NextRequest) {
     }, jwt);
     if (!stored.ok) return fail('O número já está vinculado a outra unidade ou sua permissão expirou.', 409);
 
-    // No outbound token is stored in this release. Automated replies/history sync
-    // cannot be activated yet: avoiding unencrypted tokens or misleading claims.
+    // Preserve the authorization for this unit only, encrypted at rest using
+    // a Vercel-only AES-256-GCM key. Without a saved token, inbound can work
+    // but automatic outbound messages MUST remain disabled.
+    const tokenSaved = await saveChannelToken(selected.id, access);
+    if (!tokenSaved) {
+      await tenantApi('rpc/viante_owner_disable_whatsapp_channel', 'POST',
+        { p_org: orgId, p_phone_id: selected.id }, jwt);
+      return fail('Falha ao proteger a credencial da Meta. O número não será ativado.', 503);
+    }
     return NextResponse.json({
       ok: true, phone_number: selected.display_phone_number,
       inbound_ready: true, history_import_ready: false, auto_reply_enabled: false,
