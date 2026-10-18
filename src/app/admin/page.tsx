@@ -1,10 +1,16 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { accessToken, getIdentity, isPlatformAdmin, tokenAal } from '@/lib/auth';
-import { Building2, ShieldCheck, Users, MessageSquare, Plus } from 'lucide-react';
+import { Building2, ShieldCheck, Users, MessageSquare, Plus, Mail } from 'lucide-react';
+import { tenantApi } from '@/lib/tenant-api';
 
 type Organization = { id: string; name: string; slug: string; created_at: string };
 type Props = { searchParams: Promise<{ status?: string }> };
+type Invite = { id: string; organization_id: string; email: string; status: string; expires_at: string }; 
+async function invitations(token: string): Promise<Invite[]> {
+  const response = await tenantApi('rpc/viante_ceo_invitations', 'POST', {}, token);
+  return response.ok && Array.isArray(response.data) ? response.data as Invite[] : [];
+}
 
 async function organizations(token: string): Promise<Organization[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -40,7 +46,7 @@ export default async function AdminPage({ searchParams }: Props) {
     </main>;
   }
 
-  const companies = await organizations(access);
+  const [companies, invites] = await Promise.all([organizations(access), invitations(access)]);
   return <main style={{ minHeight: '100dvh', padding: 'clamp(20px, 4vw, 52px)', maxWidth: 1440, margin: '0 auto' }}>
     <header style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, alignItems: 'center', marginBottom: 32 }}>
       <div><span className="eyebrow">VIANTE • CONTROLE DA PLATAFORMA</span><h1 style={{ fontSize: 32, marginTop: 8 }}>Painel CEO</h1><p style={{ color: 'var(--muted)', marginTop: 7 }}>Administração geral, separada das equipes de atendimento.</p></div>
@@ -49,9 +55,13 @@ export default async function AdminPage({ searchParams }: Props) {
     <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
       <article style={{ padding: 22, borderRadius: 14, background: 'var(--panel)', border: '1px solid var(--border)' }}><Building2 size={24}/><p style={{ marginTop: 15, color: 'var(--muted)' }}>Empresas cadastradas</p><h2 style={{ fontSize: 34 }}>{companies.length}</h2></article>
       <article style={{ padding: 22, borderRadius: 14, background: 'var(--panel)', border: '1px solid var(--border)' }}><ShieldCheck size={24}/><p style={{ marginTop: 15, color: 'var(--muted)' }}>Segurança</p><h2 style={{ marginTop: 8 }}>MFA ativo</h2></article>
-      <article style={{ padding: 22, borderRadius: 14, background: 'var(--panel)', border: '1px solid var(--border)' }}><Users size={24}/><p style={{ marginTop: 15, color: 'var(--muted)' }}>Atendentes</p><h2 style={{ fontSize: 17, marginTop: 8 }}>Gestão em implantação</h2></article>
+      <article style={{ padding: 22, borderRadius: 14, background: 'var(--panel)', border: '1px solid var(--border)' }}><Mail size={24}/><p style={{ marginTop: 15, color: 'var(--muted)' }}>Convites de proprietários</p><h2 style={{ fontSize: 34, marginTop: 8 }}>{invites.filter(i => i.status === 'pending').length}</h2></article>
     </section>
     {status === 'created' && <p role="status" style={{ padding: 14, background: 'var(--accent-soft)', marginBottom: 16 }}>Empresa cadastrada com sucesso.</p>}
+    {status === 'invite-sent' && <p role="status" style={{ padding: 14, background: 'var(--accent-soft)', marginBottom: 16 }}>Convite solicitado ao Supabase Auth. Peça ao responsável para verificar o e-mail e concluir o cadastro.</p>}
+    {status === 'invite-delivery-failed' && <p role="alert" style={{ padding: 14, background: 'var(--elevated)', marginBottom: 16 }}>O convite ficou registrado, mas o Supabase Auth não confirmou o envio. Tente reenviar depois de revisar as configurações de e-mail.</p>}
+    {status === 'invite-invalid' && <p role="alert" style={{ padding: 14, background: 'var(--elevated)', marginBottom: 16 }}>Informe um e-mail válido e selecione uma empresa existente.</p>}
+    {status === 'invite-error' && <p role="alert" style={{ padding: 14, background: 'var(--elevated)', marginBottom: 16 }}>Não foi possível gerar o convite. Ele pode já ter sido aceito.</p>}
     {status === 'error' && <p role="alert" style={{ padding: 14, background: 'var(--elevated)', marginBottom: 16 }}>Não foi possível cadastrar. Verifique o nome e o identificador.</p>}
     <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 360px), 1fr))', gap: 24 }}>
       <article style={{ padding: 24, background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 14 }}>
@@ -68,6 +78,18 @@ export default async function AdminPage({ searchParams }: Props) {
           {companies.length === 0 && <p style={{ color: 'var(--muted)' }}>Nenhuma empresa cadastrada. Comece pelo formulário ao lado.</p>}
           {companies.map(company => <div key={company.id} style={{ padding: 15, border: '1px solid var(--border)', borderRadius: 9 }}>
             <strong>{company.name}</strong><p style={{ color: 'var(--muted)', marginTop: 5 }}>{company.slug}</p>
+            <form method="post" action="/admin/invitations" style={{ display: 'grid', gap: 8, marginTop: 15 }}>
+              <input type="hidden" name="organization_id" value={company.id}/>
+              <label style={{ display: 'grid', gap: 6, fontSize: 12 }}>E-mail do proprietário
+                <input name="email" type="email" autoComplete="email" required maxLength={254} placeholder="proprietario@empresa.com"/>
+              </label>
+              <button className="button" type="submit"><Mail size={16}/> Enviar convite ao proprietário</button>
+            </form>
+            {invites.filter(i => i.organization_id === company.id).map(i =>
+              <div key={i.id} style={{ marginTop: 10, fontSize: 12, color: 'var(--muted)' }}>
+                <strong>{i.email}</strong> · {i.status === 'accepted' ? 'Ativo' : i.status === 'pending' ? (new Date(i.expires_at).getTime() < Date.now() ? 'Expirado — reenviar' : 'Convite pendente') : 'Revogado'}
+              </div>
+            )}
           </div>)}
         </div>
       </article>
