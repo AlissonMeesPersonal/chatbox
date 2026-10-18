@@ -3,7 +3,7 @@ import { ACCESS_COOKIE, REFRESH_COOKIE } from '@/lib/auth';
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
-  const requiresAuth = path.startsWith('/admin') || path.startsWith('/app') || path.startsWith('/mfa') || path.startsWith('/activate-ceo') || path.startsWith('/reset-password');
+  const requiresAuth = path.startsWith('/admin') || path.startsWith('/app') || path.startsWith('/mfa') || path.startsWith('/activate-ceo') || path.startsWith('/accept-invite') || path.startsWith('/entry') || path.startsWith('/reset-password');
   const access = request.cookies.get(ACCESS_COOKIE)?.value;
   const refresh = request.cookies.get(REFRESH_COOKIE)?.value;
   let response = NextResponse.next({ request });
@@ -63,5 +63,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/app/:path*', '/mfa/:path*', '/activate-ceo/:path*', '/reset-password/:path*'],
+  matcher: ['/admin/:path*', '/app/:path*', '/mfa/:path*', '/activate-ceo/:path*', '/accept-invite/:path*', '/entry/:path*', '/reset-password/:path*'],
 };
