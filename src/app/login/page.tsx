@@ -18,8 +18,8 @@ const statusMessages: Record<string, string> = {
 type Props = { searchParams: Promise<{ mode?: string; status?: string }> };
 export default async function Login({ searchParams }: Props) {
   const { mode = 'sign-in', status = '' } = await searchParams;
-  const intent = mode === 'recover' ? 'recover' : mode === 'sign-up' ? 'sign-up' : 'sign-in';
-  const modeTitle = intent === 'recover' ? 'Recuperar acesso' : intent === 'sign-up' ? 'Ativar conta CEO' : 'Entre na sua conta';
+  const intent = mode === 'recover' ? 'recover' : mode === 'magic' ? 'magic' : mode === 'sign-up' ? 'sign-up' : 'sign-in';
+  const modeTitle = intent === 'recover' ? 'Recuperar acesso' : intent === 'magic' ? 'Entrar por e-mail' : intent === 'sign-up' ? 'Ativar conta CEO' : 'Entre na sua conta';
   return <main className="login">
     <section className="login-story">
       <Link className="wordmark" href="/login"><span className="brand-symbol">v</span>viante<span className="wordmark-dot">.</span></Link>
@@ -48,16 +48,17 @@ export default async function Login({ searchParams }: Props) {
           <label htmlFor="email" style={{ display: 'grid', gap: 7 }}>E-mail
             <input id="email" type="email" name="email" required autoComplete="email" maxLength={254} defaultValue={intent === 'sign-up' ? 'alissonmeespersonal@gmail.com' : undefined} placeholder="seu@email.com"/>
           </label>
-          {intent !== 'recover' && <label htmlFor="password" style={{ display: 'grid', gap: 7 }}>Senha
+          {intent !== 'recover' && intent !== 'magic' && <label htmlFor="password" style={{ display: 'grid', gap: 7 }}>Senha
             <input id="password" type="password" name="password" required minLength={intent === 'sign-up' ? 12 : 1} maxLength={128} autoComplete={intent === 'sign-up' ? 'new-password' : 'current-password'} placeholder="Digite sua senha"/>
           </label>}
           <button className="button primary login-cta" type="submit">
-            {intent === 'recover' ? 'Enviar recuperação' : intent === 'sign-up' ? 'Criar conta e confirmar e-mail' : 'Entrar no Viante'} <ArrowRight size={18}/>
+            {intent === 'recover' ? 'Enviar recuperação' : intent === 'magic' ? 'Enviar link para entrar' : intent === 'sign-up' ? 'Criar conta e confirmar e-mail' : 'Entrar no Viante'} <ArrowRight size={18}/>
           </button>
         </form>
         <div style={{ marginTop: 22, display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 12 }}>
           {intent !== 'sign-in' && <Link href="/login">Já tenho conta</Link>}
           {intent !== 'recover' && <Link href="/login?mode=recover">Esqueci minha senha</Link>}
+          {intent !== 'magic' && <Link href="/login?mode=magic">Receber link de acesso por e-mail</Link>}
           {intent !== 'sign-up' && <Link href="/login?mode=sign-up">Primeira ativação CEO</Link>}
         </div>
         <div className="phase-note" style={{ marginTop: 24 }}>
