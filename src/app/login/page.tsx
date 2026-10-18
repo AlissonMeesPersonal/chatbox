@@ -13,6 +13,7 @@ const statusMessages: Record<string, string> = {
   signedout: 'Você saiu da plataforma com segurança.',
   'invalid-link': 'O link expirou ou é inválido. Solicite um novo.',
   signin: 'Entre com sua conta para acessar o Viante.',
+  unconfirmed: 'Confirme seu e-mail antes de continuar. Consulte sua caixa de entrada.',
 };
 type Props = { searchParams: Promise<{ mode?: string; status?: string }> };
 export default async function Login({ searchParams }: Props) {
