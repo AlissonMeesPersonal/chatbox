@@ -7,7 +7,8 @@ export default async function ResetPassword({ searchParams }: Props) {
   return <main style={{ maxWidth: 440, margin: '12vh auto', padding: 24 }}>
     <h1>Definir nova senha</h1>
     <p style={{ margin: '20px 0' }}>Use pelo menos 12 caracteres. A nova senha será salva no Supabase Auth.</p>
-    {status && <p role="status">Não foi possível alterar a senha. Tente novamente.</p>}
+    {status === 'welcome' && <p role="status">Convite aceito! Agora defina sua senha de acesso para entrar novamente no futuro.</p>}
+    {status && status !== 'welcome' && <p role="alert">Não foi possível alterar a senha. Tente novamente.</p>}
     <form method="post" action="/auth/action" style={{ display: 'grid', gap: 14 }}>
       <input type="hidden" name="intent" value="update-password"/>
       <input type="password" name="password" minLength={12} maxLength={128} required autoComplete="new-password" aria-label="Nova senha"/>
