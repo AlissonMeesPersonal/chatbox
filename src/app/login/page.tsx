@@ -34,7 +34,14 @@ export default async function Login({ searchParams }: Props) {
           <div className="route-card"><Route size={18}/><span>Comercial · Matriz</span><Check size={17}/></div>
         </div>
       </div>
-      <footer>Feito para conectar pessoas, equipes e possibilidades.</footer>
+      <footer style={{ display: 'grid', gap: 12 }}>
+        <span>Feito para conectar pessoas, equipes e possibilidades.</span>
+        <nav aria-label="Documentos legais" style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 12 }}>
+          <Link href="/politica-de-privacidade">Política de Privacidade</Link>
+          <Link href="/termos-de-uso">Termos de Uso</Link>
+          <Link href="/exclusao-de-dados">Exclusão de dados</Link>
+        </nav>
+      </footer>
     </section>
     <section className="login-form">
       <div className="login-theme"><ThemeToggle/></div>
