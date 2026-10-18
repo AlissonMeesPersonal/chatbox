@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { Cable, MessageCircle, ShieldCheck, ArrowLeft, ExternalLink } from 'lucide-react';
 import { accessToken, getIdentity, isPlatformAdmin, tokenAal } from '@/lib/auth';
 import { myMemberships, tenantApi } from '@/lib/tenant-api';
+import { QrLab } from './qr-lab';
 
 type Organization = { id: string; name: string };
 type Unit = { id: string; organization_id: string; name: string };
@@ -58,6 +59,8 @@ export default async function ChannelsPage({ searchParams }: Props) {
     </header>
     {company && <p style={{ marginBottom: 20, color: 'var(--muted)' }}>Empresa selecionada: <strong style={{ color: 'var(--text)' }}>{company.name}</strong></p>}
     {status && responses[status] && <p role="status" style={{ padding: 16, marginBottom: 18, background: 'var(--elevated)', borderRadius: 10 }}>{responses[status]}</p>}
+    <QrLab/>
+    <h2 style={{ margin: '27px 0 16px', fontSize: 20 }}>Integração oficial · API da Meta</h2>
     <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,370px),1fr))', gap: 20 }}>
       <article style={{ padding: 24, border: '1px solid var(--border)', background: 'var(--panel)', borderRadius: 14 }}>
         <h2 style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 20 }}><Cable size={20}/> Conectar número de teste</h2>
