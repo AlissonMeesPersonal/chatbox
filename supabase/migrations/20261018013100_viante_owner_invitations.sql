@@ -34,7 +34,7 @@ begin
     raise exception 'forbidden' using errcode='42501';
   end if;
 end
-$function$
+$function$;
 revoke all on function viante_private.require_ceo() from public, anon;
 grant execute on function viante_private.require_ceo() to authenticated;
 
@@ -65,7 +65,7 @@ begin
   if v_id is null then raise exception 'already accepted or revoked' using errcode='23505'; end if;
   return v_id;
 end
-$function$
+$function$;
 revoke all on function viante_private.ceo_invite_owner(p_organization_id uuid, p_email text) from public, anon;
 grant execute on function viante_private.ceo_invite_owner(p_organization_id uuid, p_email text) to authenticated;
 
@@ -80,7 +80,7 @@ begin
   return query select i.id,i.organization_id,i.email,i.status,i.expires_at
   from public.viante_invitations i order by i.created_at desc limit 200;
 end
-$function$
+$function$;
 revoke all on function viante_private.ceo_invitations() from public, anon;
 grant execute on function viante_private.ceo_invitations() to authenticated;
 
@@ -118,7 +118,7 @@ begin
   on conflict (organization_id,user_id) do update set role='owner',status='active';
   return v_org;
 end
-$function$
+$function$;
 revoke all on function viante_private.accept_invite(p_invitation_id uuid) from public, anon;
 grant execute on function viante_private.accept_invite(p_invitation_id uuid) to authenticated;
 
@@ -142,7 +142,7 @@ begin
   values(p_organization_id,trim(p_name)) returning id into v_id;
   return v_id;
 end
-$function$
+$function$;
 revoke all on function viante_private.owner_create_unit(p_organization_id uuid, p_name text) from public, anon;
 grant execute on function viante_private.owner_create_unit(p_organization_id uuid, p_name text) to authenticated;
 
@@ -150,7 +150,7 @@ CREATE OR REPLACE FUNCTION public.viante_ceo_invite_owner(p_organization_id uuid
  RETURNS uuid
  LANGUAGE sql
  SET search_path TO ''
-AS $function$ select viante_private.ceo_invite_owner(p_organization_id,p_email) $function$
+AS $function$ select viante_private.ceo_invite_owner(p_organization_id,p_email) $function$;
 revoke all on function public.viante_ceo_invite_owner(p_organization_id uuid, p_email text) from public, anon;
 grant execute on function public.viante_ceo_invite_owner(p_organization_id uuid, p_email text) to authenticated;
 
@@ -158,7 +158,7 @@ CREATE OR REPLACE FUNCTION public.viante_ceo_invitations()
  RETURNS TABLE(id uuid, organization_id uuid, email text, status text, expires_at timestamp with time zone)
  LANGUAGE sql
  SET search_path TO ''
-AS $function$ select * from viante_private.ceo_invitations() $function$
+AS $function$ select * from viante_private.ceo_invitations() $function$;
 revoke all on function public.viante_ceo_invitations() from public, anon;
 grant execute on function public.viante_ceo_invitations() to authenticated;
 
@@ -166,7 +166,7 @@ CREATE OR REPLACE FUNCTION public.viante_accept_invite(p_invitation_id uuid)
  RETURNS uuid
  LANGUAGE sql
  SET search_path TO ''
-AS $function$ select viante_private.accept_invite(p_invitation_id) $function$
+AS $function$ select viante_private.accept_invite(p_invitation_id) $function$;
 revoke all on function public.viante_accept_invite(p_invitation_id uuid) from public, anon;
 grant execute on function public.viante_accept_invite(p_invitation_id uuid) to authenticated;
 
@@ -174,6 +174,6 @@ CREATE OR REPLACE FUNCTION public.viante_owner_create_unit(p_organization_id uui
  RETURNS uuid
  LANGUAGE sql
  SET search_path TO ''
-AS $function$ select viante_private.owner_create_unit(p_organization_id,p_name) $function$
+AS $function$ select viante_private.owner_create_unit(p_organization_id,p_name) $function$;
 revoke all on function public.viante_owner_create_unit(p_organization_id uuid, p_name text) from public, anon;
 grant execute on function public.viante_owner_create_unit(p_organization_id uuid, p_name text) to authenticated;
