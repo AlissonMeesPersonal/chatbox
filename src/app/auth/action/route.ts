@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  accessToken, authApi, clearAuthCookies, isSameOrigin, publicBaseUrl, writeAuthCookies,
+  accessToken, authApi, clearAuthCookies, isSameOrigin, writeAuthCookies,
   type AuthTokens,
 } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
+const CANONICAL_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://chatbox-cyan-five.vercel.app';
 const CEO_EMAIL = 'alissonmeespersonal@gmail.com';
 
 function go(request: NextRequest, target: string) {
@@ -46,14 +47,21 @@ export async function POST(request: NextRequest) {
       // Self-service sign-up is disabled for other accounts until tenant invitations exist.
       if (email !== CEO_EMAIL) return go(request, '/login?status=invite-only');
       if (password.length < 12 || password.length > 128) return go(request, '/login?status=weak');
-      const callback = encodeURIComponent(publicBaseUrl(request) + '/auth/finish?flow=signup');
+      const callback = encodeURIComponent(CANONICAL_URL + '/auth/finish?flow=signup');
       const result = await authApi('signup?redirect_to=' + callback, { email, password });
       // Always use generic response so this endpoint cannot enumerate Auth users.
       if (!result.ok && result.status === 429) return go(request, '/login?status=limited');
       return go(request, '/login?status=check-email');
     }
+    if (action === 'magic') {
+      // Existing accounts only. Never create arbitrary user accounts through this route.
+      const callback = encodeURIComponent(CANONICAL_URL + '/auth/finish?flow=login');
+      const res = await authApi('otp?redirect_to=' + callback, { email, create_user: false });
+      if (!res.ok && res.status === 429) return go(request, '/login?status=limited');
+      return go(request, '/login?status=check-email');
+    }
     if (action === 'recover') {
-      const callback = encodeURIComponent(publicBaseUrl(request) + '/auth/finish?flow=recovery');
+      const callback = encodeURIComponent(CANONICAL_URL + '/auth/finish?flow=recovery');
       await authApi('recover?redirect_to=' + callback, { email }).catch(() => null);
       return go(request, '/login?status=check-email');
     }
