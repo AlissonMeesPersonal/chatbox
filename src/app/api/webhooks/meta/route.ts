@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { loadChannelToken } from '@/lib/meta-token';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -105,13 +106,16 @@ export async function POST(request: NextRequest) {
             return new NextResponse('Temporary ingestion error', { status: 503 });
           }
 
-          // First-number pilot only: a SERVER-ONLY access token, bound to exactly
-          // one Meta phone ID, can send after verified inbound messages.
-          // No tenant can trigger sending from another WABA/phone number.
-          const outboundToken = process.env.META_TEST_WHATSAPP_TOKEN;
-          const pilotPhone = process.env.META_TEST_PHONE_NUMBER_ID;
-          if (!outboundToken || !pilotPhone || pilotPhone !== phone ||
-              message.type !== 'text' || typeof body !== 'string') continue;
+          // Only verified Cloud API messages can drive the Vi responder.
+          // In production we load a credential encrypted at rest for exactly
+          // this registered phone. Optional single-number test fallback is
+          // restricted to an explicitly matching phone ID.
+          if (message.type !== 'text' || typeof body !== 'string') continue;
+          const storedToken = await loadChannelToken(phone).catch(() => null);
+          const fallbackToken = process.env.META_TEST_PHONE_NUMBER_ID === phone
+            ? process.env.META_TEST_WHATSAPP_TOKEN : null;
+          const outboundToken = storedToken || fallbackToken;
+          if (!outboundToken) continue;
 
           const rpc = async (name: string, data: Record<string, unknown>) => {
             const result = await fetch(supabaseUrl + '/rest/v1/rpc/' + name, {
