@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       if (!token) return go(request, '/login?status=expired');
       const result = await authApi('user', { password }, token, 'PUT');
       if (!result.ok) return go(request, '/reset-password?status=error');
-      return go(request, '/admin');
+      return go(request, '/entry');
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
       return go(request, '/login?status=invalid');
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         return go(request, '/login?status=invalid');
       }
       await writeAuthCookies(result.data as AuthTokens);
-      return go(request, '/admin');
+      return go(request, '/entry');
     }
     if (action === 'sign-up') {
       // Self-service sign-up is disabled for other accounts until tenant invitations exist.
