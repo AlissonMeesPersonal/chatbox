@@ -98,7 +98,7 @@ export async function isPlatformAdmin(userId: string, access: string): Promise<b
 
 export function isSameOrigin(request: Request): boolean {
   const origin = request.headers.get('origin');
-  return !origin || origin === new URL(request.url).origin;
+  return origin !== null && origin === new URL(request.url).origin;
 }
 
 export function publicBaseUrl(request: Request): string {
