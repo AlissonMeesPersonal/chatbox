@@ -2,7 +2,7 @@
 
 import Script from 'next/script';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ShieldCheck, Smartphone, MessageSquare, History, LockKeyhole } from 'lucide-react';
+import { ShieldCheck, Smartphone, MessageSquare, History, LockKeyhole, ExternalLink } from 'lucide-react';
 
 type Unit = { id: string; name: string };
 type FBResponse = { authResponse?: { code?: string } };
