@@ -8,7 +8,7 @@ export default async function MfaPage({ searchParams }: Props) {
   if (!identity) redirect('/login?status=signin');
   if (!identity.email_confirmed_at) redirect('/login?status=unconfirmed');
   const { next: nextPath } = await searchParams;
-  const next = nextPath && /^\/accept-invite\?invite=[0-9a-f-]{36}$/i.test(nextPath) ? nextPath : '/entry';
+  const next = nextPath && /^\/accept-(?:unit-)?invite\?invite=[0-9a-f-]{36}$/i.test(nextPath) ? nextPath : '/entry';
   const factors = (identity as { factors?: Array<{ id: string; status: string; factor_type: string }> }).factors ?? [];
   const verifiedTotp = factors.find(f => f.factor_type === 'totp' && f.status === 'verified');
   return <main style={{ maxWidth: 470, margin: '8vh auto', padding: 24 }}>
