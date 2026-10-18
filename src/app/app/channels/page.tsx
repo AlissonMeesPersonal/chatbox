@@ -4,6 +4,7 @@ import { Cable, MessageCircle, ShieldCheck, ArrowLeft, ExternalLink } from 'luci
 import { accessToken, getIdentity, isPlatformAdmin, tokenAal } from '@/lib/auth';
 import { myMemberships, tenantApi } from '@/lib/tenant-api';
 import { QrLab } from './qr-lab';
+import { MetaCoexistence } from './meta-coexistence';
 
 type Organization = { id: string; name: string };
 type Unit = { id: string; organization_id: string; name: string };
@@ -14,7 +15,7 @@ type Channel = {
 };
 type Props = { searchParams: Promise<{ org?: string; status?: string }> };
 const responses: Record<string, string> = {
-  connected: 'Número validado na Meta, registrado nesta unidade e assinatura do webhook solicitada com sucesso.',
+  connected: 'Número validado na Meta e associado à unidade para receber eventos. Importação de histórico e respostas automáticas da Vi ainda não estão habilitadas.',
   invalid: 'Preencha os identificadores e o token fornecidos pelo painel da Meta.',
   'meta-not-ready': 'O Viante ainda precisa da configuração do aplicativo Meta antes de conectar um número real.',
   'meta-rejected': 'A Meta recusou o token. Verifique a validade e as permissões da conta empresarial.',
@@ -59,13 +60,28 @@ export default async function ChannelsPage({ searchParams }: Props) {
     </header>
     {company && <p style={{ marginBottom: 20, color: 'var(--muted)' }}>Empresa selecionada: <strong style={{ color: 'var(--text)' }}>{company.name}</strong></p>}
     {status && responses[status] && <p role="status" style={{ padding: 16, marginBottom: 18, background: 'var(--elevated)', borderRadius: 10 }}>{responses[status]}</p>}
+    {canManage && mfa && company && units.length > 0
+      ? <MetaCoexistence
+          units={units} organizationId={company.id}
+          metaAppId={process.env.META_APP_ID ?? null}
+          configId={process.env.META_EMBEDDED_SIGNUP_CONFIG_ID ?? null}
+          enabled={ready}
+          graphVersion={process.env.META_GRAPH_API_VERSION || 'v24.0'}
+        />
+      : <section style={{ border: '1px solid var(--border)', borderRadius: 14, padding: 20, background: 'var(--panel)' }}>
+          <h2>Conectar o WhatsApp Business existente</h2>
+          <p style={{ marginTop: 10, color: 'var(--muted)', lineHeight: 1.7 }}>Para iniciar a autorização da Meta, faça login como proprietário com MFA ativo e cadastre pelo menos uma unidade da empresa.</p>
+          <Link href={canManage && !mfa ? '/mfa' : '/app'} className="button" style={{ marginTop: 15 }}>
+            {canManage && !mfa ? 'Configurar autenticação MFA' : 'Voltar à minha empresa'}
+          </Link>
+        </section>}
     <QrLab/>
-    <h2 style={{ margin: '27px 0 16px', fontSize: 20 }}>Integração oficial · API da Meta</h2>
+    <h2 style={{ margin: '27px 0 16px', fontSize: 20 }}>Conexão técnica · Cloud API (avançado)</h2>
     <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,370px),1fr))', gap: 20 }}>
       <article style={{ padding: 24, border: '1px solid var(--border)', background: 'var(--panel)', borderRadius: 14 }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 20 }}><Cable size={20}/> Conectar número de teste</h2>
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 20 }}><Cable size={20}/> Conectar número com credenciais da Meta</h2>
         <p style={{ color: 'var(--muted)', lineHeight: 1.6, marginTop: 12 }}>
-          Use um número configurado no WhatsApp Business Platform. Um telefone digitado sozinho não recebe mensagens pela API.
+          Esta opção é destinada a administradores técnicos que já possuem WABA ID, Phone Number ID e token da Meta. Para conectar um WhatsApp Business existente, prefira o fluxo oficial acima.
         </p>
         {!ready && <div style={{ marginTop: 16, padding: 15, borderRadius: 9, background: 'var(--elevated)', border: '1px solid var(--border)' }} role="status">
           <strong>Configuração Meta pendente</strong>
