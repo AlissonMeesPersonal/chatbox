@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 type Enrollment = { id: string; qr?: string; secret?: string };
-export function MfaSetup({ existingFactorId }: { existingFactorId: string | null }) {
+export function MfaSetup({ existingFactorId, next = '/entry' }: { existingFactorId: string | null; next?: string }) {
   const [enrolled, setEnrolled] = useState<Enrollment | null>(null);
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,9 +42,9 @@ export function MfaSetup({ existingFactorId }: { existingFactorId: string | null
     if (!result?.ok) return;
     setLoading(true);
     try {
-      await fetch('/auth/claim', { method: 'POST', headers: { accept: 'application/json' }, credentials: 'same-origin' });
+      if (next === '/entry') await fetch('/auth/claim', { method: 'POST', headers: { accept: 'application/json' }, credentials: 'same-origin' });
     } finally {
-      window.location.replace('/admin');
+      window.location.replace(next);
     }
   }
 
