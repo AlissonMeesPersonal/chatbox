@@ -28,9 +28,11 @@ export default function AuthFinish() {
         const query = new URLSearchParams(window.location.search);
         const inviteId = query.get('invite') || '';
         const inviteFlow = query.get('flow') === 'invite' && /^[0-9a-f-]{36}$/i.test(inviteId);
+        const unitFlow = query.get('flow') === 'unit' && /^[0-9a-f-]{36}$/i.test(inviteId);
         const next = type === 'recovery' || query.get('flow') === 'recovery'
           ? '/reset-password'
-          : inviteFlow ? '/accept-invite?invite=' + encodeURIComponent(inviteId) : '/entry';
+          : inviteFlow ? '/accept-invite?invite=' + encodeURIComponent(inviteId)
+          : unitFlow ? '/accept-unit-invite?invite=' + encodeURIComponent(inviteId) : '/entry';
         window.location.replace(next);
       } catch {
         if (!cancelled) setMessage('Não foi possível validar a sessão. Volte à tela de login.');
