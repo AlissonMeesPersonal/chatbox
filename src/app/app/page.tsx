@@ -106,9 +106,13 @@ export default async function CompanyDashboard({ searchParams }: Props) {
         </article>
       </section>
       <section style={{ border: '1px solid var(--border)', background: 'var(--panel)', borderRadius: 14, padding: 22 }}>
-        <h2><MessageSquare size={18} style={{ display: 'inline', verticalAlign: 'middle' }}/> Atendimento</h2>
-        <p style={{ color: 'var(--muted)', margin: '12px 0' }}>O canal empresarial será habilitado quando os operadores e canais forem configurados. A demonstração não acessa conversas reais.</p>
-        <Link href="/demo">Ver Inbox com dados fictícios</Link>
+        <h2><MessageSquare size={18} style={{ display: 'inline', verticalAlign: 'middle' }}/> Canais e atendimento</h2>
+        <p style={{ color: 'var(--muted)', margin: '12px 0 20px' }}>Associe um número WhatsApp Business à primeira unidade, configure a Meta e visualize mensagens de clientes recebidas por webhook.</p>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Link className="button primary" href={'/app/channels?org=' + currentOrg.id}>Conectar número WhatsApp</Link>
+          <Link className="button" href="/app/inbox">Mensagens recebidas</Link>
+          <Link href="/demo">Ver demonstração</Link>
+        </div>
       </section>
     </div>}
   </main>;
