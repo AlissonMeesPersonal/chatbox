@@ -46,17 +46,15 @@ export async function POST(request: NextRequest) {
       // Self-service sign-up is disabled for other accounts until tenant invitations exist.
       if (email !== CEO_EMAIL) return go(request, '/login?status=invite-only');
       if (password.length < 12 || password.length > 128) return go(request, '/login?status=weak');
-      const result = await authApi('signup', {
-        email, password,
-        data: {},
-        gotrue_meta_security: {},
-      });
+      const callback = encodeURIComponent(publicBaseUrl(request) + '/auth/finish?flow=signup');
+      const result = await authApi('signup?redirect_to=' + callback, { email, password });
       // Always use generic response so this endpoint cannot enumerate Auth users.
       if (!result.ok && result.status === 429) return go(request, '/login?status=limited');
       return go(request, '/login?status=check-email');
     }
     if (action === 'recover') {
-      await authApi('recover', { email }).catch(() => null);
+      const callback = encodeURIComponent(publicBaseUrl(request) + '/auth/finish?flow=recovery');
+      await authApi('recover?redirect_to=' + callback, { email }).catch(() => null);
       return go(request, '/login?status=check-email');
     }
   } catch {
