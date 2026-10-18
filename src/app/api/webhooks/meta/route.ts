@@ -104,6 +104,85 @@ export async function POST(request: NextRequest) {
             // Non-2xx allows Meta to retry transient errors; DB deduplicates message IDs.
             return new NextResponse('Temporary ingestion error', { status: 503 });
           }
+
+          // First-number pilot only: a SERVER-ONLY access token, bound to exactly
+          // one Meta phone ID, can send after verified inbound messages.
+          // No tenant can trigger sending from another WABA/phone number.
+          const outboundToken = process.env.META_TEST_WHATSAPP_TOKEN;
+          const pilotPhone = process.env.META_TEST_PHONE_NUMBER_ID;
+          if (!outboundToken || !pilotPhone || pilotPhone !== phone ||
+              message.type !== 'text' || typeof body !== 'string') continue;
+
+          const rpc = async (name: string, data: Record<string, unknown>) => {
+            const result = await fetch(supabaseUrl + '/rest/v1/rpc/' + name, {
+              method: 'POST',
+              headers: { apikey: publishableKey, 'Content-Type': 'application/json' },
+              body: JSON.stringify(data),
+              cache: 'no-store',
+            });
+            if (!result.ok) throw new Error('Internal responder state unavailable');
+            return await result.json() as unknown;
+          };
+          try {
+            await rpc('viante_vi_prepare', {
+              p_secret: ingestSecret,
+              p_phone: phone,
+              p_inbound_meta_id: message.id,
+            });
+            const pending = await rpc('viante_vi_claim', {
+              p_secret: ingestSecret,
+              p_phone: phone,
+              p_meta_id: message.id,
+            }) as Array<{ outbox_id: string; recipient: string; message_body: string }>;
+            if (!Array.isArray(pending) || pending.length === 0) continue;
+            const job = pending[0];
+            if (typeof job?.recipient !== 'string' || !/^\d{5,30}$/.test(job.recipient) ||
+                typeof job?.message_body !== 'string' || job.message_body.length > 3500 ||
+                !/^[0-9a-f-]{36}$/i.test(job.outbox_id)) {
+              return new NextResponse('Invalid outbound task', { status: 503 });
+            }
+            let sentId = '';
+            let success = false;
+            try {
+              const version = process.env.META_GRAPH_API_VERSION || 'v24.0';
+              const send = await fetch('https://graph.facebook.com/' + version + '/' + phone + '/messages', {
+                method: 'POST',
+                headers: {
+                  Authorization: 'Bearer ' + outboundToken,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  messaging_product: 'whatsapp',
+                  recipient_type: 'individual',
+                  to: job.recipient,
+                  type: 'text',
+                  text: { preview_url: false, body: job.message_body },
+                  context: { message_id: message.id },
+                }),
+                cache: 'no-store',
+                signal: AbortSignal.timeout(13000),
+              });
+              if (send.ok) {
+                const result = await send.json() as { messages?: Array<{ id?: string }> };
+                sentId = result.messages?.[0]?.id ?? '';
+                success = Boolean(sentId);
+              }
+            } catch {
+              // Keep outbound task pending for Meta's authenticated webhook retry.
+            }
+            await rpc('viante_vi_ack', {
+              p_secret: ingestSecret,
+              p_outbox_id: job.outbox_id,
+              p_success: success,
+              p_meta_sent_id: sentId,
+            });
+            if (!success) {
+              // Do not falsely acknowledge a WhatsApp reply as delivered.
+              return new NextResponse('Meta outbound reply temporarily unavailable', { status: 503 });
+            }
+          } catch {
+            return new NextResponse('Vi responder unavailable; retry later', { status: 503 });
+          }
         }
       }
     }
