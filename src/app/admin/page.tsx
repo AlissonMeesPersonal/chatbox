@@ -58,6 +58,7 @@ export default async function AdminPage({ searchParams }: Props) {
       <article style={{ padding: 22, borderRadius: 14, background: 'var(--panel)', border: '1px solid var(--border)' }}><Mail size={24}/><p style={{ marginTop: 15, color: 'var(--muted)' }}>Convites de proprietários</p><h2 style={{ fontSize: 34, marginTop: 8 }}>{invites.filter(i => i.status === 'pending').length}</h2></article>
     </section>
     {status === 'created' && <p role="status" style={{ padding: 14, background: 'var(--accent-soft)', marginBottom: 16 }}>Empresa cadastrada com sucesso.</p>}
+    {status === 'invite-revoked' && <p role="status" style={{ padding: 14, background: 'var(--accent-soft)', marginBottom: 16 }}>Convite revogado. O antigo link não poderá mais ativar acesso empresarial.</p>}
     {status === 'invite-sent' && <p role="status" style={{ padding: 14, background: 'var(--accent-soft)', marginBottom: 16 }}>Convite solicitado ao Supabase Auth. Peça ao responsável para verificar o e-mail e concluir o cadastro.</p>}
     {status === 'invite-delivery-failed' && <p role="alert" style={{ padding: 14, background: 'var(--elevated)', marginBottom: 16 }}>O convite ficou registrado, mas o Supabase Auth não confirmou o envio. Tente reenviar depois de revisar as configurações de e-mail.</p>}
     {status === 'invite-invalid' && <p role="alert" style={{ padding: 14, background: 'var(--elevated)', marginBottom: 16 }}>Informe um e-mail válido e selecione uma empresa existente.</p>}
@@ -88,6 +89,10 @@ export default async function AdminPage({ searchParams }: Props) {
             {invites.filter(i => i.organization_id === company.id).map(i =>
               <div key={i.id} style={{ marginTop: 10, fontSize: 12, color: 'var(--muted)' }}>
                 <strong>{i.email}</strong> · {i.status === 'accepted' ? 'Ativo' : i.status === 'pending' ? (new Date(i.expires_at).getTime() < Date.now() ? 'Expirado — reenviar' : 'Convite pendente') : 'Revogado'}
+                {i.status === 'pending' && <form action="/admin/invitations/revoke" method="post" style={{ marginTop: 7 }}>
+                  <input type="hidden" name="invitation_id" value={i.id}/>
+                  <button type="submit" style={{ color: 'var(--muted)', textDecoration: 'underline', padding: 0, border: 0, background: 'none', fontSize: 12 }}>Revogar convite</button>
+                </form>}
               </div>
             )}
           </div>)}
